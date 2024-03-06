@@ -1,0 +1,11 @@
+-- Your SQL goes here
+CREATE TABLE "user" (
+	id SERIAL PRIMARY KEY,
+	first_name VARCHAR(255),
+	last_name VARCHAR(255),
+	username VARCHAR(255),
+	email VARCHAR(255) NOT NULL,
+	CONSTRAINT UC_Email UNIQUE (email)
+);
+
+CREATE UNIQUE INDEX UX_Email ON "user"(email);
