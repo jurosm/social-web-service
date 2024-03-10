@@ -11,13 +11,9 @@ pub(super) struct GenericResponse {
     #[schema(example = "success")]
     pub status: String,
     #[schema(example = "something")]
-    pub message: String
+    pub message: String,
 }
 
-/// Do a health check.
-/// ```text
-/// curl localhost:8080/v1/health
-/// ```
 #[utoipa::path(get, path = "/health",
     responses(
         (status = 200, description = "Health check", body = GenericResponse)

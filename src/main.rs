@@ -1,100 +1,53 @@
-use crate::user::dsl::*;
+use actix_web::dev::ServiceResponse;
+use actix_web::http::header;
+use actix_web::middleware::{ErrorHandlerResponse, ErrorHandlers};
 use actix_web::{App, HttpServer};
-use diesel::prelude::*;
 use social_web_service::models::*;
-use social_web_service::schema::user::{self, username};
-use social_web_service::*;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
-use uuid::Uuid;
 
 mod health;
+mod users;
+
+fn add_error_header<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {
+    res.response_mut().headers_mut().insert(
+        header::CONTENT_TYPE,
+        header::HeaderValue::from_static("Error"),
+    );
+
+    // body is unchanged, map to "left" slot
+    Ok(ErrorHandlerResponse::Response(res.map_into_left_body()))
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     #[derive(OpenApi)]
     #[openapi(
-        paths(health::health_handler),
+        paths(health::health_handler,users::handler::create_user_handler,users::handler::update_user_handler,users::handler::get_user_handler,users::handler::delete_user_handler,users::handler::get_users_handler),
         components(
-            schemas(health::GenericResponse)
+            schemas(health::GenericResponse, User, CreateUserSchema, UpdateUserSchema)
         ),
         tags(
-            (name = "health", description = "Health check endpoints.")
+            (name = "health", description = "Health check endpoints."),
+            (name = "user", description = "User endpoints")
         ),
     )]
     struct ApiDoc;
 
     HttpServer::new(move || {
         App::new()
+            .wrap(ErrorHandlers::new().handler(
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                add_error_header,
+            ))
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
-            .configure(health::config)
+            // .configure(health::config)
+            .configure(users::config)
     })
     .bind(("127.0.0.1", 8000))?
     .run()
     .await
-}
-
-fn db_test_crud() {
-    let page_size = 100;
-
-    let connection = &mut establish_connection();
-    let results = user::table
-        .limit(page_size)
-        .select(User::as_select())
-        .load(connection)
-        .expect("Error loading posts");
-
-    println!("Displaying {} users", results.len());
-    for user1 in results {
-        println!("{:?}", user1.email);
-    }
-
-    let random_id = Uuid::new_v4();
-
-    // Let's now insert a user
-    let new_user = NewUser {
-        email: &format!("{}@gmail.com", random_id),
-        first_name: "oli",
-        last_name: "dragoejvic",
-        username: "olidrag",
-    };
-
-    diesel::insert_into(user::table)
-        .values(&new_user)
-        .returning(User::as_returning())
-        .get_result(connection)
-        .expect("Error adding new user!");
-
-    // Get results, again
-    let results = user::table
-        .limit(page_size)
-        .select(User::as_select())
-        .load(connection)
-        .expect("Error loading posts");
-
-    println!("Displaying {} users", results.len());
-    for user1 in results {
-        println!("{:?}", user1.email);
-    }
-
-    // Update the user
-    let _ = diesel::update(user::table)
-        .filter(id.is_not_null())
-        .set(username.eq("bohomo"))
-        .execute(connection);
-
-    // Get results, again
-    let results = user::table
-        .limit(page_size)
-        .select(User::as_select())
-        .load(connection)
-        .expect("Error loading posts");
-
-    println!("Displaying {} users", results.len());
-    for user1 in results {
-        println!("{:?}", user1.username);
-    }
 }
