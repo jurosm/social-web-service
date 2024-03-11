@@ -29,7 +29,5 @@ pub(super) async fn health_handler() -> impl Responder {
 }
 
 pub fn config(conf: &mut web::ServiceConfig) {
-    let scope = web::scope("").service(health_handler);
-
-    conf.service(scope);
+    conf.service(health_handler);
 }

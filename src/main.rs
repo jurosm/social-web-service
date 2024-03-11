@@ -1,7 +1,7 @@
 use actix_web::dev::ServiceResponse;
 use actix_web::http::header;
 use actix_web::middleware::{ErrorHandlerResponse, ErrorHandlers};
-use actix_web::{App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use social_web_service::models::*;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
@@ -44,8 +44,8 @@ async fn main() -> std::io::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
-            // .configure(health::config)
-            .configure(users::config)
+            .service(web::scope("/v1").configure(users::config))
+            .service(web::scope("").configure(health::config))
     })
     .bind(("127.0.0.1", 8000))?
     .run()

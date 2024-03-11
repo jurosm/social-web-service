@@ -8,12 +8,9 @@ use self::handler::{
 pub mod handler;
 
 pub fn config(conf: &mut web::ServiceConfig) {
-    let scope = web::scope("/v1")
-        .service(create_user_handler)
+    conf.service(create_user_handler)
         .service(update_user_handler)
         .service(get_user_handler)
         .service(delete_user_handler)
         .service(get_users_handler);
-
-    conf.service(scope);
 }
