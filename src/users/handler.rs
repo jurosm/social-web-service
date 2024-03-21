@@ -6,6 +6,7 @@ use social_web_service::{
     models::{CreateUserSchema, NewUser, UpdateUser, UpdateUserSchema, User},
     schema::user::{self, id},
 };
+use validator::Validate;
 
 #[derive(Serialize, Deserialize)]
 pub struct BadRequestError<'a> {
@@ -21,40 +22,47 @@ request_body(content = CreateUserSchema, description = "User that should be inse
 )]
 #[post("/user")]
 pub(super) async fn create_user_handler(body: web::Json<CreateUserSchema>) -> impl Responder {
-    let connection = &mut establish_connection();
+    let is_valid = body.validate();
 
-    let new_user = NewUser {
-        email: &body.email,
-        first_name: &body.first_name,
-        last_name: &body.last_name,
-        username: &body.username,
-    };
+    match is_valid {
+        Ok(_) => {
+            let connection = &mut establish_connection();
 
-    let new_created_user = match diesel::insert_into(user::table)
-        .values(&new_user)
-        .returning(User::as_returning())
-        .get_result(connection)
-    {
-        Ok(entity) => entity,
-        Err(_e) => {
-            return HttpResponse::BadRequest()
-                .json(BadRequestError {
-                    message: "User with that email already exists.",
-                    error: "user.create.already_exists",
-                })
-                .into()
+            let new_user = NewUser {
+                email: &body.email,
+                first_name: &body.first_name,
+                last_name: &body.last_name,
+                username: &body.username,
+            };
+
+            let new_created_user = match diesel::insert_into(user::table)
+                .values(&new_user)
+                .returning(User::as_returning())
+                .get_result(connection)
+            {
+                Ok(entity) => entity,
+                Err(_e) => {
+                    return HttpResponse::BadRequest()
+                        .json(BadRequestError {
+                            message: "User with that email already exists.",
+                            error: "user.create.already_exists",
+                        })
+                        .into()
+                }
+            };
+
+            let response_user = User {
+                email: new_created_user.email,
+                id: new_created_user.id,
+                first_name: new_created_user.first_name,
+                last_name: new_created_user.last_name,
+                username: new_created_user.username,
+            };
+
+            HttpResponse::Ok().json(response_user)
         }
-    };
-
-    let response_user = User {
-        email: new_created_user.email,
-        id: new_created_user.id,
-        first_name: new_created_user.first_name,
-        last_name: new_created_user.last_name,
-        username: new_created_user.username,
-    };
-
-    HttpResponse::Ok().json(response_user)
+        Err(err) => HttpResponse::BadRequest().json(err),
+    }
 }
 
 #[derive(Deserialize)]
@@ -76,41 +84,48 @@ pub(super) async fn update_user_handler(
     path: web::Path<UserIdParam>,
     body: web::Json<UpdateUserSchema>,
 ) -> impl Responder {
-    let connection = &mut establish_connection();
+    let is_valid = body.validate();
 
-    let update_user = UpdateUser {
-        email: body.email.as_deref(),
-        first_name: body.first_name.as_deref(),
-        last_name: body.last_name.as_deref(),
-        username: body.username.as_deref(),
-    };
+    match is_valid {
+        Ok(_) => {
+            let connection = &mut establish_connection();
 
-    let updated_user = match diesel::update(user::table)
-        .set(update_user)
-        .filter(id.eq(path.id))
-        .returning(User::as_returning())
-        .get_result(connection)
-    {
-        Ok(entity) => entity,
-        Err(_e) => {
-            return HttpResponse::BadRequest()
-                .json(BadRequestError {
-                    message: "User with that email already exists.",
-                    error: "user.create.already_exists",
-                })
-                .into();
+            let update_user = UpdateUser {
+                email: body.email.as_deref(),
+                first_name: body.first_name.as_deref(),
+                last_name: body.last_name.as_deref(),
+                username: body.username.as_deref(),
+            };
+
+            let updated_user = match diesel::update(user::table)
+                .set(update_user)
+                .filter(id.eq(path.id))
+                .returning(User::as_returning())
+                .get_result(connection)
+            {
+                Ok(entity) => entity,
+                Err(_e) => {
+                    return HttpResponse::BadRequest()
+                        .json(BadRequestError {
+                            message: "User with that email already exists.",
+                            error: "user.create.already_exists",
+                        })
+                        .into();
+                }
+            };
+
+            let response_user = User {
+                email: updated_user.email,
+                id: updated_user.id,
+                first_name: updated_user.first_name,
+                last_name: updated_user.last_name,
+                username: updated_user.username,
+            };
+
+            HttpResponse::Ok().json(response_user)
         }
-    };
-
-    let response_user = User {
-        email: updated_user.email,
-        id: updated_user.id,
-        first_name: updated_user.first_name,
-        last_name: updated_user.last_name,
-        username: updated_user.username,
-    };
-
-    HttpResponse::Ok().json(response_user)
+        Err(err) => HttpResponse::BadRequest().json(err),
+    }
 }
 
 #[utoipa::path(get, path = "/v1/user/{id}", tag = "user",
