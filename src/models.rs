@@ -14,7 +14,7 @@ pub struct User {
     pub email: String,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Serialize)]
 #[diesel(table_name = crate::schema::user)]
 pub struct NewUser<'a> {
     pub first_name: &'a str,
