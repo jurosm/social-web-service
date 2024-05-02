@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, ToSchema, Clone, Debug)]
-pub(super) struct GenericResponse {
+pub struct GenericResponse {
     #[schema(example = "success")]
     pub status: String,
     #[schema(example = "something")]

@@ -1,23 +1,9 @@
-use actix_web::dev::ServiceResponse;
-use actix_web::http::header;
-use actix_web::middleware::{ErrorHandlerResponse, ErrorHandlers};
+use actix_web::middleware::ErrorHandlers;
 use actix_web::{web, App, HttpServer};
-use social_web_service::models::*;
+use social_web_service::{add_error_header, models::*};
+use social_web_service::{config, health, users};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
-
-mod health;
-mod users;
-
-fn add_error_header<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {
-    res.response_mut().headers_mut().insert(
-        header::CONTENT_TYPE,
-        header::HeaderValue::from_static("Error"),
-    );
-
-    // body is unchanged, map to "left" slot
-    Ok(ErrorHandlerResponse::Response(res.map_into_left_body()))
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -44,7 +30,7 @@ async fn main() -> std::io::Result<()> {
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
-            .service(web::scope("/v1").configure(users::config))
+            .service(web::scope("/v1").configure(config))
             .service(web::scope("").configure(health::config))
     })
     .bind(("127.0.0.1", 8000))?

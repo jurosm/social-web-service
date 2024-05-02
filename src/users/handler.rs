@@ -1,11 +1,9 @@
+use crate::establish_connection;
+use crate::models::{CreateUserSchema, NewUser, UpdateUser, UpdateUserSchema, User};
+use crate::schema::user::{self, id};
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use social_web_service::{
-    establish_connection,
-    models::{CreateUserSchema, NewUser, UpdateUser, UpdateUserSchema, User},
-    schema::user::{self, id},
-};
 use validator::Validate;
 
 #[derive(Serialize, Deserialize)]
@@ -169,7 +167,7 @@ pub(super) async fn get_user_handler(path: web::Path<UserIdParam>) -> impl Respo
 pub(super) async fn delete_user_handler(path: web::Path<UserIdParam>) -> impl Responder {
     let connection = &mut establish_connection();
 
-    diesel::delete(user::table.filter(id.eq(path.id))).execute(connection);
+    let _ = diesel::delete(user::table.filter(id.eq(path.id))).execute(connection);
 
     HttpResponse::Ok()
 }
