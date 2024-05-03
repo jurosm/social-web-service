@@ -11,5 +11,11 @@ diesel::table! {
         username -> Nullable<Varchar>,
         #[max_length = 255]
         email -> Varchar,
+        #[max_length = 255]
+        refresh_token -> Nullable<Varchar>,
+        #[max_length = 255]
+        refresh_token_expiry -> Nullable<Varchar>,
+        #[max_length = 255]
+        password -> Varchar,
     }
 }

@@ -1,16 +1,12 @@
 use crate::establish_connection;
-use crate::models::{CreateUserSchema, NewUser, UpdateUser, UpdateUserSchema, User};
+use crate::models::{
+    BadRequestError, CreateUserSchema, NewUser, ResponseUser, UpdateUser, UpdateUserSchema, User,
+};
 use crate::schema::user::{self, id};
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use diesel::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use validator::Validate;
-
-#[derive(Serialize, Deserialize)]
-pub struct BadRequestError<'a> {
-    message: &'a str,
-    error: &'a str,
-}
 
 #[utoipa::path(post, path = "/v1/user", tag = "user",
 request_body(content = CreateUserSchema, description = "User that should be inserted in the database", content_type = "application/json"),
@@ -26,11 +22,14 @@ pub(super) async fn create_user_handler(body: web::Json<CreateUserSchema>) -> im
         Ok(_) => {
             let connection = &mut establish_connection();
 
+            let hash = pwhash::bcrypt::hash(&body.password).unwrap();
+
             let new_user = NewUser {
                 email: &body.email,
                 first_name: &body.first_name,
                 last_name: &body.last_name,
                 username: &body.username,
+                password: hash.as_str(),
             };
 
             let new_created_user = match diesel::insert_into(user::table)
@@ -49,7 +48,7 @@ pub(super) async fn create_user_handler(body: web::Json<CreateUserSchema>) -> im
                 }
             };
 
-            let response_user = User {
+            let response_user = ResponseUser {
                 email: new_created_user.email,
                 id: new_created_user.id,
                 first_name: new_created_user.first_name,
@@ -71,7 +70,7 @@ struct UserIdParam {
 #[utoipa::path(patch, path = "/v1/user/{id}", tag = "user",
 request_body(content = UpdateUserSchema, description = "User that should be updated in the database", content_type = "application/json"),
     responses(
-        (status = 200, description = "Update a user", body = User)
+        (status = 200, description = "Update a user", body = ResponseUser)
     ),
     params(
         ("id", description = "User ID")
@@ -88,12 +87,22 @@ pub(super) async fn update_user_handler(
         Ok(_) => {
             let connection = &mut establish_connection();
 
-            let update_user = UpdateUser {
+            let mut update_user = UpdateUser {
                 email: body.email.as_deref(),
                 first_name: body.first_name.as_deref(),
                 last_name: body.last_name.as_deref(),
                 username: body.username.as_deref(),
+                password: None,
+                refresh_token: None,
+                refresh_token_expiry: None,
             };
+
+            let hash: String;
+            if body.password.is_some() {
+                let password_value = body.password.as_deref().unwrap();
+                hash = pwhash::bcrypt::hash(password_value).unwrap();
+                update_user.password = Some(hash.as_str());
+            }
 
             let updated_user = match diesel::update(user::table)
                 .set(update_user)
@@ -112,7 +121,7 @@ pub(super) async fn update_user_handler(
                 }
             };
 
-            let response_user = User {
+            let response_user = ResponseUser {
                 email: updated_user.email,
                 id: updated_user.id,
                 first_name: updated_user.first_name,
@@ -128,7 +137,7 @@ pub(super) async fn update_user_handler(
 
 #[utoipa::path(get, path = "/v1/user/{id}", tag = "user",
     responses(
-        (status = 200, description = "The user", body = User)
+        (status = 200, description = "The user", body = ResponseUser)
     ),
     params(
         ("id", description = "User ID")
@@ -144,7 +153,7 @@ pub(super) async fn get_user_handler(path: web::Path<UserIdParam>) -> impl Respo
         .first(connection)
         .expect("Error fetching a user");
 
-    let response_user = User {
+    let response_user = ResponseUser {
         email: results.email,
         id: results.id,
         first_name: results.first_name,
@@ -174,7 +183,7 @@ pub(super) async fn delete_user_handler(path: web::Path<UserIdParam>) -> impl Re
 
 #[utoipa::path(get, path = "/v1/user", tag = "user",
     responses(
-        (status = 200, description = "The user", body = Vec<User>)
+        (status = 200, description = "The user", body = Vec<ResponseUser>)
     ),
 )]
 #[get("/user")]
@@ -187,9 +196,9 @@ pub(super) async fn get_users_handler() -> impl Responder {
         .load(connection)
         .expect("Error fetching the users");
 
-    let users: Vec<User> = results
+    let users: Vec<ResponseUser> = results
         .iter()
-        .map(|user: &User| User {
+        .map(|user: &User| ResponseUser {
             email: user.email.clone(),
             id: user.id,
             first_name: user.first_name.clone(),

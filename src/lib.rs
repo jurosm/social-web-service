@@ -11,6 +11,7 @@ pub mod health;
 pub mod models;
 pub mod schema;
 pub mod users;
+pub mod auth;
 
 pub fn establish_connection() -> PgConnection {
     dotenv().ok();
@@ -22,6 +23,7 @@ pub fn establish_connection() -> PgConnection {
 
 pub fn config(conf: &mut web::ServiceConfig) {
     crate::users::controller::config(conf);
+    crate::auth::controller::config(conf);
 }
 
 pub fn add_error_header<B>(mut res: ServiceResponse<B>) -> actix_web::Result<ErrorHandlerResponse<B>> {

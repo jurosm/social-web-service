@@ -32,6 +32,7 @@ async fn test_users_crud() {
         first_name: "Misko",
         last_name: "Miskovic",
         username: "miskopisko",
+        password: "1234"
     };
 
     let req = test::TestRequest::post()

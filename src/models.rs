@@ -12,6 +12,18 @@ pub struct User {
     pub last_name: Option<String>,
     pub username: Option<String>,
     pub email: String,
+    pub password: String,
+    pub refresh_token: Option<String>,
+    pub refresh_token_expiry: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
+pub struct ResponseUser {
+    pub id: i32,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub username: Option<String>,
+    pub email: String,
 }
 
 #[derive(Insertable, Serialize)]
@@ -21,6 +33,7 @@ pub struct NewUser<'a> {
     pub last_name: &'a str,
     pub username: &'a str,
     pub email: &'a str,
+    pub password: &'a str,
 }
 
 #[derive(AsChangeset)]
@@ -30,6 +43,9 @@ pub struct UpdateUser<'a> {
     pub last_name: Option<&'a str>,
     pub username: Option<&'a str>,
     pub email: Option<&'a str>,
+    pub password: Option<&'a str>,
+    pub refresh_token: Option<&'a str>,
+    pub refresh_token_expiry: Option<&'a str>,
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
@@ -39,6 +55,7 @@ pub struct CreateUserSchema {
     pub username: String,
     #[validate(email)]
     pub email: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
@@ -48,4 +65,23 @@ pub struct UpdateUserSchema {
     pub username: Option<String>,
     #[validate(email)]
     pub email: Option<String>,
+    pub password: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
+pub struct UserLoginSchema {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
+pub struct UserLoginResponseSchema {
+    pub token: String,
+    pub refresh_token: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BadRequestError<'a> {
+    pub message: &'a str,
+    pub error: &'a str,
 }
