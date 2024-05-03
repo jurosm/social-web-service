@@ -1,6 +1,6 @@
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{web, App, HttpServer};
-use social_web_service::{add_error_header, models::*};
+use social_web_service::{add_error_header, get_connection_pool, models::*};
 use social_web_service::{config, health, users};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
@@ -20,8 +20,11 @@ async fn main() -> std::io::Result<()> {
     )]
     struct ApiDoc;
 
+    let pool = get_connection_pool();
+
     HttpServer::new(move || {
         App::new()
+            .app_data(web::Data::new(pool.clone()))
             .wrap(ErrorHandlers::new().handler(
                 actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
                 add_error_header,

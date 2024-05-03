@@ -6,12 +6,19 @@ use actix_web::{
     App,
 };
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
-use social_web_service::models::{NewUser, User};
+use social_web_service::{
+    get_connection_pool,
+    models::{NewUser, ResponseUser},
+};
 
 #[actix_web::test]
 async fn test_users_crud() {
+    let pool = get_connection_pool();
+
     let app = test::init_service(
-        App::new().service(web::scope("/v1").configure(social_web_service::config)),
+        App::new()
+            .app_data(web::Data::new(pool.clone()))
+            .service(web::scope("/v1").configure(social_web_service::config)),
     )
     .await;
 
@@ -20,7 +27,7 @@ async fn test_users_crud() {
     let resp = test::call_service(&app, req).await;
     assert!(resp.status().is_success());
 
-    let body: Vec<User> = test::read_body_json(resp).await;
+    let body: Vec<ResponseUser> = test::read_body_json(resp).await;
 
     assert!(!body.is_empty(), "get users not empty");
 
@@ -32,7 +39,7 @@ async fn test_users_crud() {
         first_name: "Misko",
         last_name: "Miskovic",
         username: "miskopisko",
-        password: "1234"
+        password: "1234",
     };
 
     let req = test::TestRequest::post()
@@ -45,7 +52,7 @@ async fn test_users_crud() {
 
     let response_body = test::read_body(resp).await;
 
-    let created_user: User = serde_json::from_slice(&response_body).unwrap();
+    let created_user: ResponseUser = serde_json::from_slice(&response_body).unwrap();
 
     assert!(created_user.email.eq(&new_user.email), "email is correct");
     assert!(

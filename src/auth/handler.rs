@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc};
+use diesel::r2d2::{ConnectionManager, Pool};
 use std::env;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::establish_connection;
 use crate::models::{BadRequestError, User, UserLoginResponseSchema, UserLoginSchema};
 use crate::schema::user::{self, email, refresh_token, refresh_token_expiry};
 use actix_web::{post, web, HttpResponse, Responder};
@@ -30,13 +30,16 @@ request_body(content = UserLoginSchema, description = "Login with user credentia
     )
 )]
 #[post("/auth/login")]
-pub async fn login(body: web::Json<UserLoginSchema>) -> impl Responder {
-    let connection = &mut establish_connection();
+pub async fn login(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    body: web::Json<UserLoginSchema>,
+) -> impl Responder {
+    let mut connection = db_pool.get().unwrap();
 
     let user = user::table
         .select(User::as_select())
         .filter(email.eq(&body.email))
-        .first(connection)
+        .first(&mut connection)
         .expect("Error fetching a user");
 
     let is_correct_password = pwhash::bcrypt::verify(&body.password, &user.password);
@@ -68,7 +71,7 @@ pub async fn login(body: web::Json<UserLoginSchema>) -> impl Responder {
                 refresh_token_expiry.eq(&token_expiry),
             ))
             .filter(email.eq(&body.email))
-            .execute(connection);
+            .execute(&mut connection);
 
         HttpResponse::Ok().json(UserLoginResponseSchema {
             token,

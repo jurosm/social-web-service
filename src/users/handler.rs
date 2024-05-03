@@ -1,10 +1,10 @@
-use crate::establish_connection;
 use crate::models::{
     BadRequestError, CreateUserSchema, NewUser, ResponseUser, UpdateUser, UpdateUserSchema, User,
 };
 use crate::schema::user::{self, id};
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, Pool};
 use serde::Deserialize;
 use validator::Validate;
 
@@ -15,12 +15,15 @@ request_body(content = CreateUserSchema, description = "User that should be inse
     )
 )]
 #[post("/user")]
-pub(super) async fn create_user_handler(body: web::Json<CreateUserSchema>) -> impl Responder {
+pub(super) async fn create_user_handler(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    body: web::Json<CreateUserSchema>,
+) -> impl Responder {
     let is_valid = body.validate();
 
     match is_valid {
         Ok(_) => {
-            let connection = &mut establish_connection();
+            let mut connection = db_pool.get().unwrap();
 
             let hash = pwhash::bcrypt::hash(&body.password).unwrap();
 
@@ -35,7 +38,7 @@ pub(super) async fn create_user_handler(body: web::Json<CreateUserSchema>) -> im
             let new_created_user = match diesel::insert_into(user::table)
                 .values(&new_user)
                 .returning(User::as_returning())
-                .get_result(connection)
+                .get_result(&mut connection)
             {
                 Ok(entity) => entity,
                 Err(_e) => {
@@ -78,6 +81,7 @@ request_body(content = UpdateUserSchema, description = "User that should be upda
 )]
 #[patch("/user/{id}")]
 pub(super) async fn update_user_handler(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
     path: web::Path<UserIdParam>,
     body: web::Json<UpdateUserSchema>,
 ) -> impl Responder {
@@ -85,7 +89,7 @@ pub(super) async fn update_user_handler(
 
     match is_valid {
         Ok(_) => {
-            let connection = &mut establish_connection();
+            let mut connection = db_pool.get().unwrap();
 
             let mut update_user = UpdateUser {
                 email: body.email.as_deref(),
@@ -108,7 +112,7 @@ pub(super) async fn update_user_handler(
                 .set(update_user)
                 .filter(id.eq(path.id))
                 .returning(User::as_returning())
-                .get_result(connection)
+                .get_result(&mut connection)
             {
                 Ok(entity) => entity,
                 Err(_e) => {
@@ -144,13 +148,16 @@ pub(super) async fn update_user_handler(
     )
 )]
 #[get("/user/{id}")]
-pub(super) async fn get_user_handler(path: web::Path<UserIdParam>) -> impl Responder {
-    let connection = &mut establish_connection();
+pub(super) async fn get_user_handler(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    path: web::Path<UserIdParam>,
+) -> impl Responder {
+    let mut connection = db_pool.get().unwrap();
 
     let results = user::table
         .select(User::as_select())
         .filter(id.eq(path.id))
-        .first(connection)
+        .first(&mut connection)
         .expect("Error fetching a user");
 
     let response_user = ResponseUser {
@@ -173,10 +180,13 @@ pub(super) async fn get_user_handler(path: web::Path<UserIdParam>) -> impl Respo
     )
 )]
 #[delete("/user/{id}")]
-pub(super) async fn delete_user_handler(path: web::Path<UserIdParam>) -> impl Responder {
-    let connection = &mut establish_connection();
+pub(super) async fn delete_user_handler(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    path: web::Path<UserIdParam>,
+) -> impl Responder {
+    let mut connection = db_pool.get().unwrap();
 
-    let _ = diesel::delete(user::table.filter(id.eq(path.id))).execute(connection);
+    let _ = diesel::delete(user::table.filter(id.eq(path.id))).execute(&mut connection);
 
     HttpResponse::Ok()
 }
@@ -187,13 +197,15 @@ pub(super) async fn delete_user_handler(path: web::Path<UserIdParam>) -> impl Re
     ),
 )]
 #[get("/user")]
-pub(super) async fn get_users_handler() -> impl Responder {
-    let connection = &mut establish_connection();
+pub(super) async fn get_users_handler(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
+) -> impl Responder {
+    let mut connection = db_pool.get().unwrap();
 
     let results = user::table
         .select(User::as_select())
         .limit(100)
-        .load(connection)
+        .load(&mut connection)
         .expect("Error fetching the users");
 
     let users: Vec<ResponseUser> = results
