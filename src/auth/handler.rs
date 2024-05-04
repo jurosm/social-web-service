@@ -114,13 +114,27 @@ pub async fn refresh(
             error: "user.login.not_exists",
         })
     } else {
+        let user_data = result.unwrap();
+
+        let expiry_date =
+            DateTime::parse_from_rfc3339(&user_data.refresh_token_expiry.unwrap().as_str())
+                .unwrap()
+                .timestamp();
+
         let start = SystemTime::now();
         let since_the_epoch = start
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
 
+        if since_the_epoch.as_secs() > expiry_date.try_into().unwrap() {
+            return HttpResponse::BadRequest().json(BadRequestError {
+                message: "Refresh token expired.",
+                error: "user.login.refresh_token_expired",
+            });
+        }
+
         let claims = Claims {
-            id: result.unwrap().id,
+            id: user_data.id,
             exp: since_the_epoch.as_secs() as usize + 7200,
         };
 
