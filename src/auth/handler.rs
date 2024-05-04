@@ -4,7 +4,10 @@ use std::env;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::models::{BadRequestError, User, UserLoginResponseSchema, UserLoginSchema};
+use crate::models::{
+    BadRequestError, RefreshTokenResponseSchema, RefreshTokenSchema, User, UserLoginResponseSchema,
+    UserLoginSchema,
+};
 use crate::schema::user::{self, email, refresh_token, refresh_token_expiry};
 use actix_web::{post, web, HttpResponse, Responder};
 use diesel::prelude::*;
@@ -82,5 +85,52 @@ pub async fn login(
             message: "User does not exists.",
             error: "user.login.not_exists",
         })
+    }
+}
+
+#[utoipa::path(post, path = "/v1/auth/refresh", tag = "auth",
+request_body(content = RefreshTokenSchema, description = "Get new access token with a refresh token", content_type = "application/json"),
+    responses(
+        (status = 200, description = "Login with an user", body = RefreshTokenResponseSchema)
+    )
+)]
+#[post("/auth/refresh")]
+pub async fn refresh(
+    db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
+    body: web::Json<RefreshTokenSchema>,
+) -> impl Responder {
+    let mut connection = db_pool.get().unwrap();
+
+    let result = user::table
+        .select(User::as_select())
+        .filter(refresh_token.eq(&body.refresh_token))
+        .first(&mut connection)
+        .optional()
+        .expect("Error fetching a user");
+
+    if result.is_none() {
+        HttpResponse::BadRequest().json(BadRequestError {
+            message: "User does not exists.",
+            error: "user.login.not_exists",
+        })
+    } else {
+        let start = SystemTime::now();
+        let since_the_epoch = start
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+
+        let claims = Claims {
+            id: result.unwrap().id,
+            exp: since_the_epoch.as_secs() as usize + 7200,
+        };
+
+        let token = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(env::var("JWT_SIGN_PRIVATE_KEY").unwrap().as_bytes()),
+        )
+        .unwrap();
+
+        HttpResponse::Ok().json(RefreshTokenResponseSchema { token })
     }
 }

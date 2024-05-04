@@ -85,3 +85,13 @@ pub struct BadRequestError<'a> {
     pub message: &'a str,
     pub error: &'a str,
 }
+
+#[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
+pub struct RefreshTokenSchema {
+    pub refresh_token: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
+pub struct RefreshTokenResponseSchema {
+    pub token: String,
+}
