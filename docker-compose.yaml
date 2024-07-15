@@ -1,52 +1,43 @@
-# Comments are provided throughout this file to help you get started.
-# If you need more help, visit the Docker Compose reference guide at
-# https://docs.docker.com/go/compose-spec-reference/
-
-# Here the instructions define your application as a service called "server".
-# This service is built from the Dockerfile in the current directory.
-# You can add other services your application may depend on here, such as a
-# database or a cache. For examples, see the Awesome Compose repository:
-# https://github.com/docker/awesome-compose
 services:
-  server:
-    image: social-web-service
+  database:
+    image: "postgres:latest"
+    ports:
+      - 5432:5432
+
+    environment:
+      POSTGRES_USER: admin # The PostgreSQL user (useful to connect to the database)
+      POSTGRES_PASSWORD: admin # The PostgreSQL password (useful to connect to the database)
+      POSTGRES_DB: socialweb # The PostgreSQL default database (automatically created at first launch)
+
+    restart: always
+    volumes:
+      # In this example, we share the folder `db-data` in our root repository, with the default PostgreSQL data path
+      # It means that every time the repository is modifying the data inside
+      # of `/var/lib/postgresql/data/`, automatically the change will appear in `db-data`
+      # You don't need to create the `db-data` folder. Docker Compose will do it for you
+      - postgres:/var/lib/postgresql/data/
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 80
     restart: always
     ports:
-      - 8000:8000
-    environment:
-      - DATABASE_URL=postgres://bamfan:bamfan@host.docker.internal/socialweb
-      - JWT_SIGN_PRIVATE_KEY=password
-
-# The commented out section below is an example of how to define a PostgreSQL
-# database that your application can use. `depends_on` tells Docker Compose to
-# start the database before your application. The `db-data` volume persists the
-# database data between container restarts. The `db-password` secret is used
-# to set the database password. You must create `db/password.txt` and add
-# a password of your choosing to it before running `docker compose up`.
-#     depends_on:
-#       db:
-#         condition: service_healthy
-#   db:
-#     image: postgres
-#     restart: always
-#     user: postgres
-#     secrets:
-#       - db-password
-#     volumes:
-#       - db-data:/var/lib/postgresql/data
-#     environment:
-#       - POSTGRES_DB=example
-#       - POSTGRES_PASSWORD_FILE=/run/secrets/db-password
-#     expose:
-#       - 5432
-#     healthcheck:
-#       test: [ "CMD", "pg_isready" ]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 5
-# volumes:
-#   db-data:
-# secrets:
-#   db-password:
-#     file: db/password.txt
-
+      - 8080:80
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    depends_on:
+      - database
+volumes:
+  pgadmin:
+  postgres:
+  # server:
+  #   image: social-web-service
+  #   restart: always
+  #   ports:
+  #     - 8000:8000
+  #   environment:
+  #     - DATABASE_URL=postgres://admin:admin@host.docker.internal/socialweb
+  #     - JWT_SIGN_PRIVATE_KEY=password
