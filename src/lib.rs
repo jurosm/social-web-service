@@ -51,7 +51,7 @@ fn get_claim(token: &String) -> Result<Claims, jsonwebtoken::errors::Error> {
     // `token` is a struct with 2 fields: `header` and `claims` where `claims` is your own struct.
     let result = decode::<Claims>(
         &token,
-        &DecodingKey::from_secret("secret".as_ref()),
+        &DecodingKey::from_secret(env::var("JWT_SIGN_PRIVATE_KEY").unwrap().as_bytes()),
         &Validation::default(),
     );
 
@@ -87,11 +87,15 @@ impl FromRequest for Claims {
         };
 
         Box::pin(async move {
-            // Process the header to extract claims
-            match get_claim(&auth_header) {
-                Ok(claims) => Ok(claims),
-                Err(_) => Err(Self::Error::from(actix_web::error::ErrorUnauthorized(
-                    "Invalid token",
+            match auth_header.split(" ").nth(1) {
+                Some(token) => match get_claim(&token.to_string()) {
+                    Ok(claims) => Ok(claims),
+                    Err(_) => Err(Self::Error::from(actix_web::error::ErrorUnauthorized(
+                        "Invalid token",
+                    ))),
+                },
+                None => Err(Self::Error::from(actix_web::error::ErrorUnauthorized(
+                    "Missing Bearer token",
                 ))),
             }
         })
