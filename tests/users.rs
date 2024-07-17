@@ -6,10 +6,7 @@ use actix_web::{
     App,
 };
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
-use social_web_service::{
-    get_connection_pool,
-    models::{NewUser, ResponseUser},
-};
+use social_web_service::{get_connection_pool, models::NewUser, users::schema::ResponseUser};
 
 #[actix_web::test]
 async fn test_users_crud() {

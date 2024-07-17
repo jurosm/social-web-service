@@ -1,7 +1,6 @@
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
-use validator::Validate;
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Queryable, Selectable)]
 #[diesel(table_name = crate::schema::user)]
@@ -15,15 +14,6 @@ pub struct User {
     pub password: String,
     pub refresh_token: Option<String>,
     pub refresh_token_expiry: Option<std::time::SystemTime>,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
-pub struct ResponseUser {
-    pub id: i32,
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub username: Option<String>,
-    pub email: String,
 }
 
 #[derive(Insertable, Serialize)]
@@ -48,52 +38,10 @@ pub struct UpdateUser<'a> {
     pub refresh_token_expiry: Option<&'a std::time::SystemTime>,
 }
 
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
-pub struct CreateUserSchema {
-    pub first_name: String,
-    pub last_name: String,
-    pub username: String,
-    #[validate(email)]
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
-pub struct UpdateUserSchema {
-    pub first_name: Option<String>,
-    pub last_name: Option<String>,
-    pub username: Option<String>,
-    #[validate(email)]
-    pub email: Option<String>,
-    pub password: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
-pub struct UserLoginSchema {
-    pub email: String,
-    pub password: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
-pub struct UserLoginResponseSchema {
-    pub token: String,
-    pub refresh_token: String,
-}
-
 #[derive(Serialize, Deserialize)]
 pub struct BadRequestError<'a> {
     pub message: &'a str,
     pub error: &'a str,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]
-pub struct RefreshTokenSchema {
-    pub refresh_token: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
-pub struct RefreshTokenResponseSchema {
-    pub token: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -3,10 +3,9 @@ use std::env;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::models::{
-    BadRequestError, Claims, RefreshTokenResponseSchema, RefreshTokenSchema, User,
-    UserLoginResponseSchema, UserLoginSchema,
-};
+use super::schema::*;
+
+use crate::models::{BadRequestError, Claims, User};
 use crate::schema::user::{self, email, refresh_token, refresh_token_expiry};
 use actix_web::{post, web, HttpResponse, Responder};
 use diesel::prelude::*;
