@@ -1,7 +1,7 @@
-use crate::models::{
-    BadRequestError, CreateUserSchema, NewUser, ResponseUser, UpdateUser, UpdateUserSchema, User,
-};
+use crate::models::BadRequestError;
 use crate::schema::user::{self, id};
+use crate::users::models::{NewUser, UpdateUser, User};
+use crate::users::schema::{CreateUserSchema, ResponseUser, UpdateUserSchema};
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -11,7 +11,7 @@ use validator::Validate;
 #[utoipa::path(post, path = "/v1/user", tag = "user",
 request_body(content = CreateUserSchema, description = "User that should be inserted in the database", content_type = "application/json"),
     responses(
-        (status = 201, description = "Create a user", body = User)
+        (status = 201, description = "Create a user", body = ResponseUser)
     )
 )]
 #[post("/user")]

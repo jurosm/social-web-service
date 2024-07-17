@@ -8,7 +8,7 @@ use actix_web::{
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
 use social_web_service::{
     get_connection_pool,
-    models::{NewUser, ResponseUser},
+    users::{models::NewUser, schema::ResponseUser},
 };
 
 #[actix_web::test]

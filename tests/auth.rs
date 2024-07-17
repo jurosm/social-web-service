@@ -4,10 +4,7 @@ use actix_web::{
     App,
 };
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
-use social_web_service::{
-    get_connection_pool,
-    models::{NewUser, RefreshTokenSchema, UserLoginResponseSchema, UserLoginSchema},
-};
+use social_web_service::{auth::schema::*, get_connection_pool, users::models::NewUser};
 
 #[actix_web::test]
 async fn tests_user_login() {

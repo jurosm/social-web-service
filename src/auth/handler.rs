@@ -1,30 +1,17 @@
-use chrono::{DateTime, Utc};
 use diesel::r2d2::{ConnectionManager, Pool};
 use std::env;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::models::{
-    BadRequestError, RefreshTokenResponseSchema, RefreshTokenSchema, User, UserLoginResponseSchema,
-    UserLoginSchema,
-};
+use super::schema::*;
+
+use crate::models::{BadRequestError, Claims};
 use crate::schema::user::{self, email, refresh_token, refresh_token_expiry};
+use crate::users::models::User;
 use actix_web::{post, web, HttpResponse, Responder};
 use diesel::prelude::*;
 use jsonwebtoken::{encode, EncodingKey, Header};
-use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-
-fn iso_date(time: SystemTime) -> String {
-    let now: DateTime<Utc> = time.into();
-    now.to_rfc3339()
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    id: i32,
-    exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-}
 
 #[utoipa::path(post, path = "/v1/auth/login", tag = "auth",
 request_body(content = UserLoginSchema, description = "Login with user credentials", content_type = "application/json"),
@@ -66,7 +53,7 @@ pub async fn login(
         .unwrap();
 
         let r_token = Uuid::new_v4().to_string();
-        let token_expiry = iso_date(SystemTime::now() + Duration::from_millis(60000 * 120));
+        let token_expiry = SystemTime::now() + Duration::from_millis(60000 * 120);
 
         let _ = diesel::update(user::table)
             .set((
@@ -114,19 +101,21 @@ pub async fn refresh(
             error: "user.login.not_exists",
         })
     } else {
-        let user_data = result.unwrap();
+        let user_data: User = result.unwrap();
 
-        let expiry_date =
-            DateTime::parse_from_rfc3339(&user_data.refresh_token_expiry.unwrap().as_str())
-                .unwrap()
-                .timestamp();
+        let expiry_date = user_data.refresh_token_expiry.unwrap();
 
         let start = SystemTime::now();
         let since_the_epoch = start
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
 
-        if since_the_epoch.as_secs() > expiry_date.try_into().unwrap() {
+        if since_the_epoch.as_secs()
+            > expiry_date
+                .duration_since(UNIX_EPOCH)
+                .expect("System time went backwards")
+                .as_secs()
+        {
             return HttpResponse::BadRequest().json(BadRequestError {
                 message: "Refresh token expired.",
                 error: "user.login.refresh_token_expired",
