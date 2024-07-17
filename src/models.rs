@@ -14,7 +14,7 @@ pub struct User {
     pub email: String,
     pub password: String,
     pub refresh_token: Option<String>,
-    pub refresh_token_expiry: Option<String>,
+    pub refresh_token_expiry: Option<std::time::SystemTime>,
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Clone)]
@@ -45,7 +45,7 @@ pub struct UpdateUser<'a> {
     pub email: Option<&'a str>,
     pub password: Option<&'a str>,
     pub refresh_token: Option<&'a str>,
-    pub refresh_token_expiry: Option<&'a str>,
+    pub refresh_token_expiry: Option<&'a std::time::SystemTime>,
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, Clone, Validate)]

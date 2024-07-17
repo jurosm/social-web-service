@@ -28,8 +28,7 @@ diesel::table! {
         email -> Varchar,
         #[max_length = 255]
         refresh_token -> Nullable<Varchar>,
-        #[max_length = 255]
-        refresh_token_expiry -> Nullable<Varchar>,
+        refresh_token_expiry -> Nullable<Timestamp>,
         #[max_length = 255]
         password -> Varchar,
     }

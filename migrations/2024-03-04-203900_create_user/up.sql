@@ -6,7 +6,7 @@ CREATE TABLE "user" (
 	username VARCHAR(255),
 	email VARCHAR(255) NOT NULL,
 	refresh_token VARCHAR(255),
-	refresh_token_expiry VARCHAR(255),
+	refresh_token_expiry TIMESTAMP,
 	password VARCHAR(255) NOT NULL,
 	CONSTRAINT UC_email UNIQUE (email)
 );
