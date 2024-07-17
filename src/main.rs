@@ -1,6 +1,6 @@
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{web, App, HttpServer};
-use social_web_service::{add_error_header, get_connection_pool, models::*};
+use social_web_service::{add_error_header, get_connection_pool};
 use social_web_service::{auth, config, health, users, users::schema::*};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
@@ -18,7 +18,12 @@ async fn main() -> std::io::Result<()> {
             auth::handler::login,
             auth::handler::refresh),
         components(
-            schemas(health::GenericResponse, User, CreateUserSchema, UpdateUserSchema, ResponseUser, auth::schema::UserLoginSchema, auth::schema::UserLoginResponseSchema,
+            schemas(health::GenericResponse, 
+                CreateUserSchema, 
+                UpdateUserSchema, 
+                ResponseUser, 
+                auth::schema::UserLoginSchema, 
+                auth::schema::UserLoginResponseSchema,
                 auth::schema::RefreshTokenSchema,
                 auth::schema::RefreshTokenResponseSchema)
         ),

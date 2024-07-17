@@ -5,8 +5,9 @@ use uuid::Uuid;
 
 use super::schema::*;
 
-use crate::models::{BadRequestError, Claims, User};
+use crate::models::{BadRequestError, Claims};
 use crate::schema::user::{self, email, refresh_token, refresh_token_expiry};
+use crate::users::models::User;
 use actix_web::{post, web, HttpResponse, Responder};
 use diesel::prelude::*;
 use jsonwebtoken::{encode, EncodingKey, Header};

@@ -1,5 +1,6 @@
-use crate::models::{BadRequestError, NewUser, UpdateUser, User};
+use crate::models::BadRequestError;
 use crate::schema::user::{self, id};
+use crate::users::models::{NewUser, UpdateUser, User};
 use crate::users::schema::{CreateUserSchema, ResponseUser, UpdateUserSchema};
 use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
 use diesel::prelude::*;
