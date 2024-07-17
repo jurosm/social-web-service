@@ -1,11 +1,15 @@
 use actix_web::dev::ServiceResponse;
 use actix_web::http::header;
 use actix_web::middleware::ErrorHandlerResponse;
-use actix_web::web;
+use actix_web::{web, FromRequest, HttpRequest};
 use diesel::pg::PgConnection;
 use diesel::r2d2::{ConnectionManager, Pool};
 use dotenvy::dotenv;
+use jsonwebtoken::{decode, DecodingKey, Validation};
+use models::Claims;
 use std::env;
+use std::future::Future;
+use std::pin::Pin;
 
 pub mod auth;
 pub mod health;
@@ -41,4 +45,55 @@ pub fn get_connection_pool() -> Pool<ConnectionManager<PgConnection>> {
         .test_on_check_out(true)
         .build(manager)
         .expect("Could not build connection pool")
+}
+
+fn get_claim(token: &String) -> Result<Claims, jsonwebtoken::errors::Error> {
+    // `token` is a struct with 2 fields: `header` and `claims` where `claims` is your own struct.
+    let result = decode::<Claims>(
+        &token,
+        &DecodingKey::from_secret("secret".as_ref()),
+        &Validation::default(),
+    );
+
+    match result {
+        Ok(value) => Ok(value.claims),
+        Err(error) => Err(error),
+    }
+}
+
+impl FromRequest for Claims {
+    type Error = actix_web::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
+
+    fn from_request(req: &HttpRequest, _payload: &mut actix_web::dev::Payload) -> Self::Future {
+        let auth_header = match req.headers().get("Authorization") {
+            Some(hdr) => match hdr.to_str() {
+                Ok(h) => h.to_owned(),
+                Err(_) => {
+                    return Box::pin(async {
+                        Err(Self::Error::from(actix_web::error::ErrorUnauthorized(
+                            "Invalid header",
+                        )))
+                    });
+                }
+            },
+            None => {
+                return Box::pin(async {
+                    Err(Self::Error::from(actix_web::error::ErrorUnauthorized(
+                        "Missing header",
+                    )))
+                });
+            }
+        };
+
+        Box::pin(async move {
+            // Process the header to extract claims
+            match get_claim(&auth_header) {
+                Ok(claims) => Ok(claims),
+                Err(_) => Err(Self::Error::from(actix_web::error::ErrorUnauthorized(
+                    "Invalid token",
+                ))),
+            }
+        })
+    }
 }

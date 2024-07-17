@@ -95,3 +95,9 @@ pub struct RefreshTokenSchema {
 pub struct RefreshTokenResponseSchema {
     pub token: String,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub id: i32,
+    pub exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
+}

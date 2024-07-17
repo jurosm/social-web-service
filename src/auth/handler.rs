@@ -5,25 +5,17 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use crate::models::{
-    BadRequestError, RefreshTokenResponseSchema, RefreshTokenSchema, User, UserLoginResponseSchema,
-    UserLoginSchema,
+    BadRequestError, Claims, RefreshTokenResponseSchema, RefreshTokenSchema, User, UserLoginResponseSchema, UserLoginSchema
 };
 use crate::schema::user::{self, email, refresh_token, refresh_token_expiry};
 use actix_web::{post, web, HttpResponse, Responder};
 use diesel::prelude::*;
 use jsonwebtoken::{encode, EncodingKey, Header};
-use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn iso_date(time: SystemTime) -> String {
     let now: DateTime<Utc> = time.into();
     now.to_rfc3339()
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    id: i32,
-    exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
 }
 
 #[utoipa::path(post, path = "/v1/auth/login", tag = "auth",
