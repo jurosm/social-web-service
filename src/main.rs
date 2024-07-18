@@ -1,7 +1,7 @@
 use actix_web::middleware::ErrorHandlers;
 use actix_web::{web, App, HttpServer};
 use social_web_service::{add_error_header, get_connection_pool};
-use social_web_service::{auth, config, health, users, users::schema::*};
+use social_web_service::{auth, config, health, users, users::schema::*, posts};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
 
@@ -15,6 +15,11 @@ async fn main() -> std::io::Result<()> {
             users::handler::get_user_handler,
             users::handler::delete_user_handler,
             users::handler::get_users_handler,
+            posts::handler::get_post_handler,
+            posts::handler::get_posts_handler,
+            posts::handler::create_post_handler,
+            posts::handler::update_post_handler,
+            posts::handler::delete_post_handler,
             auth::handler::login,
             auth::handler::refresh),
         components(
@@ -30,7 +35,8 @@ async fn main() -> std::io::Result<()> {
         tags(
             (name = "health", description = "Health check endpoints."),
             (name = "user", description = "User endpoints"),
-            (name = "auth", description = "Auth endpoints")
+            (name = "auth", description = "Auth endpoints"),
+            (name = "post", description = "Post endpoints")
         ),
     )]
     struct ApiDoc;

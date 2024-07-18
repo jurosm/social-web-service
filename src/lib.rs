@@ -14,12 +14,14 @@ use std::pin::Pin;
 pub mod auth;
 pub mod health;
 pub mod models;
+pub mod posts;
 pub mod schema;
 pub mod users;
 
 pub fn config(conf: &mut web::ServiceConfig) {
     crate::users::controller::config(conf);
     crate::auth::controller::config(conf);
+    crate::posts::controller::config(conf);
 }
 
 pub fn add_error_header<B>(
