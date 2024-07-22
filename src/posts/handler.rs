@@ -145,7 +145,6 @@ pub(super) async fn update_post_handler(
 pub(super) async fn get_post_handler(
     db_pool: web::Data<Pool<ConnectionManager<PgConnection>>>,
     path: web::Path<PostIdParam>,
-    _user: Claims,
 ) -> impl Responder {
     let mut connection = db_pool.get().unwrap();
 
@@ -190,7 +189,7 @@ pub(super) async fn delete_post_handler(
 
 #[utoipa::path(get, path = "/v1/post", tag = "post",
     responses(
-        (status = 200, description = "Get list of posts", body = Vec<ResponsePost>)
+        (status = 200, description = "Get list of posts")
     )
 )]
 #[get("/post")]
@@ -201,7 +200,6 @@ pub(super) async fn get_posts_handler(
 
     let results = post::table
         .select(Post::as_select())
-        .limit(100)
         .load(&mut connection)
         .expect("Failed fetching posts");
 
@@ -216,5 +214,12 @@ pub(super) async fn get_posts_handler(
         })
         .collect();
 
-    HttpResponse::Ok().json(posts)
+    let total = posts.len();
+
+    HttpResponse::Ok().json(crate::common::api::response::ListResponse {
+        data: posts,
+        limit: 0,
+        offset: 1,
+        total,
+    })
 }

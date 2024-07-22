@@ -14,7 +14,7 @@ pub struct GenericResponse {
     pub message: String,
 }
 
-#[utoipa::path(get, path = "/health",
+#[utoipa::path(get, path = "/health", tag = "health",
     responses(
         (status = 200, description = "Health check", body = GenericResponse)
     )

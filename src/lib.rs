@@ -17,6 +17,7 @@ pub mod models;
 pub mod posts;
 pub mod schema;
 pub mod users;
+pub mod common;
 
 pub fn config(conf: &mut web::ServiceConfig) {
     crate::users::controller::config(conf);
