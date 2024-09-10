@@ -5,6 +5,8 @@ use social_web_service::{auth, config, health, posts, users};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::*;
 use utoipauto::utoipauto;
+use social_web_service::posts::schema::ResponsePost;
+use social_web_service::common;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -30,7 +32,7 @@ async fn main() -> std::io::Result<()> {
                 add_error_header,
             ))
             .service(
-                SwaggerUi::new("/swagger-ui/{_:.*}")
+                SwaggerUi::new("/documentation/{_:.*}")
                     .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
             .service(web::scope("/v1").configure(config))

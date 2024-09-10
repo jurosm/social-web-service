@@ -1,8 +1,11 @@
-use serde::Serialize;
-use utoipa::ToSchema;
+use serde::{Deserialize, Serialize};
+use utoipa::{PartialSchema, ToSchema};
 
-#[derive(Serialize, ToSchema)]
-pub struct ListResponse<T> {
+use crate::posts::schema::ResponsePost;
+
+#[derive(Serialize, ToSchema, Deserialize)]
+#[aliases(ListOfPosts = ListResponse<ResponsePost>)]
+pub struct ListResponse<T: PartialSchema> {
     pub data: Vec<T>,
     pub limit: usize,
     pub offset: usize,

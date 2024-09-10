@@ -189,7 +189,7 @@ pub(super) async fn delete_post_handler(
 
 #[utoipa::path(get, path = "/v1/post", tag = "post",
     responses(
-        (status = 200, description = "Get list of posts")
+        (status = 200, description = "Get list of posts", body = ListOfPosts)
     )
 )]
 #[get("/post")]
@@ -219,7 +219,7 @@ pub(super) async fn get_posts_handler(
     HttpResponse::Ok().json(crate::common::api::response::ListResponse {
         data: posts,
         limit: 0,
-        offset: 1,
+        offset: 0,
         total,
     })
 }

@@ -5,10 +5,7 @@ use actix_web::{
 };
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
 use social_web_service::{
-    auth::schema::{UserLoginResponseSchema, UserLoginSchema},
-    get_connection_pool,
-    posts::schema::{CreatePostSchema, ResponsePost, UpdatePostSchema},
-    users::models::NewUser,
+    auth::schema::{UserLoginResponseSchema, UserLoginSchema}, common::api::response::ListResponse, get_connection_pool, posts::schema::{CreatePostSchema, ResponsePost, UpdatePostSchema}, users::models::NewUser
 };
 
 #[actix_web::test]
@@ -137,6 +134,12 @@ async fn tests_posts_crud() {
     let get_posts_resp = test::call_service(&app, get_posts_req).await;
 
     assert!(get_posts_resp.status().is_success(), "get post list");
+
+    let get_posts_string = test::read_body(get_posts_resp).await;
+
+    let posts: ListResponse<ResponsePost> = serde_json::from_slice(&get_posts_string).unwrap();
+
+    assert!(posts.data.len() > 0, "post list is not empty");
 
     let delete_post_req = test::TestRequest::delete()
         .append_header((actix_web::http::header::AUTHORIZATION, bearer.clone()))
