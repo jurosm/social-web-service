@@ -26,6 +26,7 @@ pwhash = "1"
 fake = { version = "2.9.2", features = ["derive"] }
 jsonwebtoken = "9"
 chrono = "0.4.38"
+utoipauto = "0.1.12"
 
 # [target.x86_64-pc-windows-msvc.pq]
 # rustc-link-search = ["C:\\Program Files\\PostgreSQL\\12\\lib"]
