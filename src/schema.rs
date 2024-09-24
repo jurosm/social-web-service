@@ -36,7 +36,4 @@ diesel::table! {
 
 diesel::joinable!(post -> user (user_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    post,
-    user,
-);
+diesel::allow_tables_to_appear_in_same_query!(post, user,);

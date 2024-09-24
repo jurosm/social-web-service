@@ -1,23 +1,16 @@
-use actix_web::{
-    test,
-    web::{self},
-    App,
-};
+use actix_web::test;
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
 use social_web_service::{
-    auth::schema::{UserLoginResponseSchema, UserLoginSchema}, common::api::response::ListResponse, get_connection_pool, posts::schema::{CreatePostSchema, ResponsePost, UpdatePostSchema}, users::models::NewUser
+    auth::schema::{UserLoginResponseSchema, UserLoginSchema},
+    common::api::response::ListResponse,
+    posts::schema::{CreatePostSchema, ResponsePost, UpdatePostSchema},
+    server,
+    users::models::NewUser,
 };
 
 #[actix_web::test]
 async fn tests_posts_crud() {
-    let pool = get_connection_pool();
-
-    let app = test::init_service(
-        App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .service(web::scope("/v1").configure(social_web_service::config)),
-    )
-    .await;
+    let app = test::init_service(server::create_app()).await;
 
     // Find a better way to do this
     let fake_email: String = SafeEmail(EN).fake();

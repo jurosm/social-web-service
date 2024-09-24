@@ -59,7 +59,7 @@ pub(super) async fn create_user_handler(
                 username: new_created_user.username,
             };
 
-            HttpResponse::Ok().json(response_user)
+            HttpResponse::Created().json(response_user)
         }
         Err(err) => HttpResponse::BadRequest().json(err),
     }

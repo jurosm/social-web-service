@@ -65,7 +65,7 @@ pub(super) async fn create_post_handler(
                 name: new_created_post.name,
             };
 
-            HttpResponse::Ok().json(response_post)
+            HttpResponse::Created().json(response_post)
         }
         Err(err) => HttpResponse::BadRequest().json(err),
     }
@@ -167,7 +167,7 @@ pub(super) async fn get_post_handler(
 
 #[utoipa::path(delete, path = "/v1/post/{id}", tag = "post",
     responses(
-        (status = 200, description = "Delete a post")
+        (status = 204, description = "Delete a post")
     ),
     params(
         ("id", description = "Post ID")
@@ -184,7 +184,7 @@ pub(super) async fn delete_post_handler(
     let _ = diesel::delete(post::table.filter(id.eq(path.id).and(user_id.eq(user.id))))
         .execute(&mut connection);
 
-    HttpResponse::Ok()
+    HttpResponse::NoContent()
 }
 
 #[utoipa::path(get, path = "/v1/post", tag = "post",

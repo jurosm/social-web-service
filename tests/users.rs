@@ -1,26 +1,15 @@
 use std::ops::Not;
 
-use actix_web::{
-    test,
-    web::{self},
-    App,
-};
+use actix_web::test;
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
 use social_web_service::{
-    get_connection_pool,
+    server,
     users::{models::NewUser, schema::ResponseUser},
 };
 
 #[actix_web::test]
 async fn test_users_crud() {
-    let pool = get_connection_pool();
-
-    let app = test::init_service(
-        App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .service(web::scope("/v1").configure(social_web_service::config)),
-    )
-    .await;
+    let app = test::init_service(server::create_app()).await;
 
     let req = test::TestRequest::with_uri("/v1/user").to_request();
 

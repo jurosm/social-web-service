@@ -1,21 +1,10 @@
-use actix_web::{
-    test,
-    web::{self},
-    App,
-};
+use actix_web::test;
 use fake::{faker::internet::raw::SafeEmail, locales::EN, Fake};
-use social_web_service::{auth::schema::*, get_connection_pool, users::models::NewUser};
+use social_web_service::{auth::schema::*, server, users::models::NewUser};
 
 #[actix_web::test]
 async fn tests_user_login() {
-    let pool = get_connection_pool();
-
-    let app = test::init_service(
-        App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .service(web::scope("/v1").configure(social_web_service::config)),
-    )
-    .await;
+    let app = test::init_service(server::create_app()).await;
 
     // Find a better way to do this
     let fake_email: String = SafeEmail(EN).fake();
@@ -62,14 +51,7 @@ async fn tests_user_login() {
 
 #[actix_web::test]
 async fn tests_user_login_refresh() {
-    let pool = get_connection_pool();
-
-    let app = test::init_service(
-        App::new()
-            .app_data(web::Data::new(pool.clone()))
-            .service(web::scope("/v1").configure(social_web_service::config)),
-    )
-    .await;
+    let app = test::init_service(server::create_app()).await;
 
     // Find a better way to do this
     let fake_email: String = SafeEmail(EN).fake();
@@ -124,4 +106,10 @@ async fn tests_user_login_refresh() {
 
     let resp = test::call_service(&app, req).await;
     assert!(resp.status().is_success(), "refresh token with an user");
+
+    let response_body = test::read_body(resp).await;
+
+    let credentials: RefreshTokenResponseSchema = serde_json::from_slice(&response_body).unwrap();
+
+    assert!(!credentials.token.is_empty(), "token is returned");
 }

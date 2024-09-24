@@ -31,3 +31,6 @@ utoipauto = "0.1.12"
 # [target.x86_64-pc-windows-msvc.pq]
 # rustc-link-search = ["C:\\Program Files\\PostgreSQL\\12\\lib"]
 # rustc-link-lib = ["libpq"]
+
+[dev-dependencies]
+cargo-llvm-cov = "0.6.13"

@@ -12,12 +12,14 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub mod auth;
+pub mod common;
 pub mod health;
 pub mod models;
+pub mod open_api_docs;
 pub mod posts;
 pub mod schema;
+pub mod server;
 pub mod users;
-pub mod common;
 
 pub fn config(conf: &mut web::ServiceConfig) {
     crate::users::controller::config(conf);
