@@ -150,18 +150,22 @@ pub(super) async fn get_post_handler(
     let results = post::table
         .select(Post::as_select())
         .filter(id.eq(path.id))
-        .first(&mut connection)
-        .expect("Error fetching a post");
+        .first(&mut connection);
 
-    let response_post = ResponsePost {
-        id: results.id,
-        content: Some(results.content),
-        image_url: results.image_url,
-        name: results.name,
-        video_url: results.video_url,
-    };
+    match results {
+        Ok(post) => {
+            let response_post = ResponsePost {
+                id: post.id,
+                content: Some(post.content),
+                image_url: post.image_url,
+                name: post.name,
+                video_url: post.video_url,
+            };
 
-    HttpResponse::Ok().json(response_post)
+            HttpResponse::Ok().json(response_post)
+        }
+        Err(_error) => HttpResponse::InternalServerError().finish(),
+    }
 }
 
 #[utoipa::path(delete, path = "/v1/post/{id}", tag = "post",
@@ -197,28 +201,30 @@ pub(super) async fn get_posts_handler(
 ) -> impl Responder {
     let mut connection = db_pool.get().unwrap();
 
-    let results = post::table
-        .select(Post::as_select())
-        .load(&mut connection)
-        .expect("Failed fetching posts");
+    let results = post::table.select(Post::as_select()).load(&mut connection);
 
-    let posts: Vec<ResponsePost> = results
-        .iter()
-        .map(|post: &Post| ResponsePost {
-            id: post.id,
-            content: Some(post.content.to_owned()),
-            image_url: post.image_url.to_owned(),
-            name: post.name.to_owned(),
-            video_url: post.video_url.to_owned(),
-        })
-        .collect();
+    match results {
+        Ok(db_posts) => {
+            let posts: Vec<ResponsePost> = db_posts
+                .iter()
+                .map(|post: &Post| ResponsePost {
+                    id: post.id,
+                    content: Some(post.content.to_owned()),
+                    image_url: post.image_url.to_owned(),
+                    name: post.name.to_owned(),
+                    video_url: post.video_url.to_owned(),
+                })
+                .collect();
 
-    let total = posts.len();
+            let total = posts.len();
 
-    HttpResponse::Ok().json(crate::common::api::response::ListResponse {
-        data: posts,
-        limit: 0,
-        offset: 0,
-        total,
-    })
+            HttpResponse::Ok().json(crate::common::api::response::ListResponse {
+                data: posts,
+                limit: 0,
+                offset: 0,
+                total,
+            })
+        }
+        Err(_error) => HttpResponse::InternalServerError().finish(),
+    }
 }

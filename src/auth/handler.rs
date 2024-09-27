@@ -96,49 +96,49 @@ pub async fn refresh(
     let result = user::table
         .select(User::as_select())
         .filter(refresh_token.eq(&body.refresh_token))
-        .first(&mut connection)
-        .optional()
-        .expect("Error fetching a user");
+        .first(&mut connection);
 
-    if result.is_none() {
-        HttpResponse::BadRequest().json(BadRequestError {
-            message: "User does not exists.",
-            error: "user.login.not_exists",
-        })
-    } else {
-        let user_data: User = result.unwrap();
+    match result {
+        Ok(user_data) => {
+            let expiry_date = user_data.refresh_token_expiry.unwrap();
 
-        let expiry_date = user_data.refresh_token_expiry.unwrap();
-
-        let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
-
-        if since_the_epoch.as_secs()
-            > expiry_date
+            let start = SystemTime::now();
+            let since_the_epoch = start
                 .duration_since(UNIX_EPOCH)
-                .expect("System time went backwards")
-                .as_secs()
-        {
-            return HttpResponse::BadRequest().json(BadRequestError {
-                message: "Refresh token expired.",
-                error: "user.login.refresh_token_expired",
-            });
+                .expect("Time went backwards");
+
+            if since_the_epoch.as_secs()
+                > expiry_date
+                    .duration_since(UNIX_EPOCH)
+                    .expect("System time went backwards")
+                    .as_secs()
+            {
+                return HttpResponse::BadRequest().json(BadRequestError {
+                    message: "Refresh token expired.",
+                    error: "user.login.refresh_token_expired",
+                });
+            }
+
+            let claims = Claims {
+                id: user_data.id,
+                exp: since_the_epoch.as_secs() as usize + 7200,
+            };
+
+            let token = encode(
+                &Header::default(),
+                &claims,
+                &EncodingKey::from_secret(env::var("JWT_SIGN_PRIVATE_KEY").unwrap().as_bytes()),
+            )
+            .unwrap();
+
+            HttpResponse::Ok().json(RefreshTokenResponseSchema { token })
         }
-
-        let claims = Claims {
-            id: user_data.id,
-            exp: since_the_epoch.as_secs() as usize + 7200,
-        };
-
-        let token = encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(env::var("JWT_SIGN_PRIVATE_KEY").unwrap().as_bytes()),
-        )
-        .unwrap();
-
-        HttpResponse::Ok().json(RefreshTokenResponseSchema { token })
+        Err(err) => match err {
+            NotFound => HttpResponse::BadRequest().json(BadRequestError {
+                message: "User does not exists.",
+                error: "user.refresh.token_does_not_exists",
+            }),
+            _ => HttpResponse::InternalServerError().finish(),
+        },
     }
 }
