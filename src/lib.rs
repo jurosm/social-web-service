@@ -49,7 +49,7 @@ pub fn get_connection_pool() -> Pool<ConnectionManager<PgConnection>> {
     Pool::builder()
         .test_on_check_out(true)
         .build(manager)
-        .expect("Could not build connection pool")
+        .expect("Could not build database connection pool")
 }
 
 fn get_claim(token: &String) -> Result<Claims, jsonwebtoken::errors::Error> {
