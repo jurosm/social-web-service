@@ -1,4 +1,5 @@
 use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::result::Error::NotFound;
 use std::env;
 use std::time::Duration;
 use uuid::Uuid;
@@ -29,49 +30,53 @@ pub async fn login(
     let user = user::table
         .select(User::as_select())
         .filter(email.eq(&body.email))
-        .first(&mut connection)
-        .expect("Error fetching a user");
+        .first(&mut connection);
 
-    let is_correct_password = pwhash::bcrypt::verify(&body.password, &user.password);
+    match user {
+        Ok(user) => {
+            let is_correct_password = pwhash::bcrypt::verify(&body.password, &user.password);
 
-    if is_correct_password {
-        let start = SystemTime::now();
-        let since_the_epoch = start
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards");
+            if is_correct_password {
+                let start = SystemTime::now();
+                let since_the_epoch = start
+                    .duration_since(UNIX_EPOCH)
+                    .expect("Time went backwards");
 
-        let claims = Claims {
-            id: user.id,
-            exp: since_the_epoch.as_secs() as usize + 7200,
-        };
+                let claims = Claims {
+                    id: user.id,
+                    exp: since_the_epoch.as_secs() as usize + 7200,
+                };
 
-        let token = encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(env::var("JWT_SIGN_PRIVATE_KEY").unwrap().as_bytes()),
-        )
-        .unwrap();
+                let token = encode(
+                    &Header::default(),
+                    &claims,
+                    &EncodingKey::from_secret(env::var("JWT_SIGN_PRIVATE_KEY").unwrap().as_bytes()),
+                )
+                .unwrap();
 
-        let r_token = Uuid::new_v4().to_string();
-        let token_expiry = SystemTime::now() + Duration::from_millis(60000 * 120);
+                let r_token = Uuid::new_v4().to_string();
+                let token_expiry = SystemTime::now() + Duration::from_millis(60000 * 120);
 
-        let _ = diesel::update(user::table)
-            .set((
-                refresh_token.eq(&r_token),
-                refresh_token_expiry.eq(&token_expiry),
-            ))
-            .filter(email.eq(&body.email))
-            .execute(&mut connection);
+                let _ = diesel::update(user::table)
+                    .set((
+                        refresh_token.eq(&r_token),
+                        refresh_token_expiry.eq(&token_expiry),
+                    ))
+                    .filter(email.eq(&body.email))
+                    .execute(&mut connection);
 
-        HttpResponse::Ok().json(UserLoginResponseSchema {
-            token,
-            refresh_token: r_token,
-        })
-    } else {
-        HttpResponse::BadRequest().json(BadRequestError {
-            message: "User does not exists.",
-            error: "user.login.not_exists",
-        })
+                HttpResponse::Ok().json(UserLoginResponseSchema {
+                    token,
+                    refresh_token: r_token,
+                })
+            } else {
+                HttpResponse::BadRequest().finish()
+            }
+        }
+        Err(err) => match err {
+            NotFound => HttpResponse::BadRequest().finish(),
+            _ => HttpResponse::InternalServerError().finish(),
+        },
     }
 }
 

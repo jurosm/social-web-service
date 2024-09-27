@@ -4,9 +4,10 @@ use crate::models::{BadRequestError, Claims};
 use crate::posts::models::{NewPost, Post, UpdatePost};
 use crate::posts::schema::{CreatePostSchema, ResponsePost};
 use crate::schema::post::{self, id, user_id};
-use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, patch, post, web, HttpResponse, HttpResponseBuilder, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::result::Error::NotFound;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -102,32 +103,30 @@ pub(super) async fn update_post_handler(
                 video_url: body.video_url.as_deref(),
             };
 
-            let post = match diesel::update(post::table)
+            let post: Result<Post, HttpResponseBuilder> = diesel::update(post::table)
                 .set(updated_post)
                 .filter(id.eq(path.id).and(user_id.eq(user.id)))
                 .returning(Post::as_returning())
                 .get_result(&mut connection)
-            {
-                Ok(entity) => entity,
-                Err(_e) => {
-                    return HttpResponse::BadRequest()
-                        .json(BadRequestError {
-                            message: "User does not exists..",
-                            error: "post.create.user_does_not_exists",
-                        })
-                        .into();
+                .map_err(|e| match e {
+                    NotFound => HttpResponse::NotFound(),
+                    _ => HttpResponse::InternalServerError(),
+                });
+
+            match post {
+                Ok(post) => {
+                    let response_post = ResponsePost {
+                        id: post.id,
+                        content: Some(post.content),
+                        image_url: post.image_url,
+                        name: post.name,
+                        video_url: post.video_url,
+                    };
+
+                    HttpResponse::Ok().json(response_post)
                 }
-            };
-
-            let response_post = ResponsePost {
-                id: post.id,
-                content: Some(post.content),
-                image_url: post.image_url,
-                name: post.name,
-                video_url: post.video_url,
-            };
-
-            HttpResponse::Ok().json(response_post)
+                Err(mut err) => err.finish(),
+            }
         }
         Err(err) => HttpResponse::BadRequest().json(err),
     }
