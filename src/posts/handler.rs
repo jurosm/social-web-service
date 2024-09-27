@@ -4,9 +4,10 @@ use crate::models::{BadRequestError, Claims};
 use crate::posts::models::{NewPost, Post, UpdatePost};
 use crate::posts::schema::{CreatePostSchema, ResponsePost};
 use crate::schema::post::{self, id, user_id};
-use actix_web::{delete, get, patch, post, web, HttpResponse, Responder};
+use actix_web::{delete, get, patch, post, web, HttpResponse, HttpResponseBuilder, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::result::Error::NotFound;
 use serde::Deserialize;
 use validator::Validate;
 
@@ -65,7 +66,7 @@ pub(super) async fn create_post_handler(
                 name: new_created_post.name,
             };
 
-            HttpResponse::Ok().json(response_post)
+            HttpResponse::Created().json(response_post)
         }
         Err(err) => HttpResponse::BadRequest().json(err),
     }
@@ -102,32 +103,30 @@ pub(super) async fn update_post_handler(
                 video_url: body.video_url.as_deref(),
             };
 
-            let post = match diesel::update(post::table)
+            let post: Result<Post, HttpResponseBuilder> = diesel::update(post::table)
                 .set(updated_post)
                 .filter(id.eq(path.id).and(user_id.eq(user.id)))
                 .returning(Post::as_returning())
                 .get_result(&mut connection)
-            {
-                Ok(entity) => entity,
-                Err(_e) => {
-                    return HttpResponse::BadRequest()
-                        .json(BadRequestError {
-                            message: "User does not exists..",
-                            error: "post.create.user_does_not_exists",
-                        })
-                        .into();
+                .map_err(|e| match e {
+                    NotFound => HttpResponse::NotFound(),
+                    _ => HttpResponse::InternalServerError(),
+                });
+
+            match post {
+                Ok(post) => {
+                    let response_post = ResponsePost {
+                        id: post.id,
+                        content: Some(post.content),
+                        image_url: post.image_url,
+                        name: post.name,
+                        video_url: post.video_url,
+                    };
+
+                    HttpResponse::Ok().json(response_post)
                 }
-            };
-
-            let response_post = ResponsePost {
-                id: post.id,
-                content: Some(post.content),
-                image_url: post.image_url,
-                name: post.name,
-                video_url: post.video_url,
-            };
-
-            HttpResponse::Ok().json(response_post)
+                Err(mut err) => err.finish(),
+            }
         }
         Err(err) => HttpResponse::BadRequest().json(err),
     }
@@ -151,23 +150,27 @@ pub(super) async fn get_post_handler(
     let results = post::table
         .select(Post::as_select())
         .filter(id.eq(path.id))
-        .first(&mut connection)
-        .expect("Error fetching a post");
+        .first(&mut connection);
 
-    let response_post = ResponsePost {
-        id: results.id,
-        content: Some(results.content),
-        image_url: results.image_url,
-        name: results.name,
-        video_url: results.video_url,
-    };
+    match results {
+        Ok(post) => {
+            let response_post = ResponsePost {
+                id: post.id,
+                content: Some(post.content),
+                image_url: post.image_url,
+                name: post.name,
+                video_url: post.video_url,
+            };
 
-    HttpResponse::Ok().json(response_post)
+            HttpResponse::Ok().json(response_post)
+        }
+        Err(_error) => HttpResponse::InternalServerError().finish(),
+    }
 }
 
 #[utoipa::path(delete, path = "/v1/post/{id}", tag = "post",
     responses(
-        (status = 200, description = "Delete a post")
+        (status = 204, description = "Delete a post")
     ),
     params(
         ("id", description = "Post ID")
@@ -184,7 +187,7 @@ pub(super) async fn delete_post_handler(
     let _ = diesel::delete(post::table.filter(id.eq(path.id).and(user_id.eq(user.id))))
         .execute(&mut connection);
 
-    HttpResponse::Ok()
+    HttpResponse::NoContent()
 }
 
 #[utoipa::path(get, path = "/v1/post", tag = "post",
@@ -198,28 +201,30 @@ pub(super) async fn get_posts_handler(
 ) -> impl Responder {
     let mut connection = db_pool.get().unwrap();
 
-    let results = post::table
-        .select(Post::as_select())
-        .load(&mut connection)
-        .expect("Failed fetching posts");
+    let results = post::table.select(Post::as_select()).load(&mut connection);
 
-    let posts: Vec<ResponsePost> = results
-        .iter()
-        .map(|post: &Post| ResponsePost {
-            id: post.id,
-            content: Some(post.content.to_owned()),
-            image_url: post.image_url.to_owned(),
-            name: post.name.to_owned(),
-            video_url: post.video_url.to_owned(),
-        })
-        .collect();
+    match results {
+        Ok(db_posts) => {
+            let posts: Vec<ResponsePost> = db_posts
+                .iter()
+                .map(|post: &Post| ResponsePost {
+                    id: post.id,
+                    content: Some(post.content.to_owned()),
+                    image_url: post.image_url.to_owned(),
+                    name: post.name.to_owned(),
+                    video_url: post.video_url.to_owned(),
+                })
+                .collect();
 
-    let total = posts.len();
+            let total = posts.len();
 
-    HttpResponse::Ok().json(crate::common::api::response::ListResponse {
-        data: posts,
-        limit: 0,
-        offset: 0,
-        total,
-    })
+            HttpResponse::Ok().json(crate::common::api::response::ListResponse {
+                data: posts,
+                limit: 0,
+                offset: 0,
+                total,
+            })
+        }
+        Err(_error) => HttpResponse::InternalServerError().finish(),
+    }
 }

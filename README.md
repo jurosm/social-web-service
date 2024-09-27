@@ -27,6 +27,7 @@ Social Web is a dynamic social networking platform designed to bring people toge
 ### Running tests
 
 - cargo test
+- cargo llvm-cov --html
 
 ## License
 

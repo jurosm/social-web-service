@@ -59,7 +59,7 @@ pub(super) async fn create_user_handler(
                 username: new_created_user.username,
             };
 
-            HttpResponse::Ok().json(response_user)
+            HttpResponse::Created().json(response_user)
         }
         Err(err) => HttpResponse::BadRequest().json(err),
     }
@@ -157,18 +157,25 @@ pub(super) async fn get_user_handler(
     let results = user::table
         .select(User::as_select())
         .filter(id.eq(path.id))
-        .first(&mut connection)
-        .expect("Error fetching a user");
+        .first(&mut connection);
 
-    let response_user = ResponseUser {
-        email: results.email,
-        id: results.id,
-        first_name: results.first_name,
-        last_name: results.last_name,
-        username: results.username,
-    };
+    match results {
+        Ok(user) => {
+            let response_user = ResponseUser {
+                email: user.email,
+                id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                username: user.username,
+            };
 
-    HttpResponse::Ok().json(response_user)
+            HttpResponse::Ok().json(response_user)
+        }
+        Err(error) => match error {
+            diesel::result::Error::NotFound => HttpResponse::NotFound().finish(),
+            _ => HttpResponse::InternalServerError().finish(),
+        },
+    }
 }
 
 #[utoipa::path(delete, path = "/v1/user/{id}", tag = "user",
@@ -205,19 +212,26 @@ pub(super) async fn get_users_handler(
     let results = user::table
         .select(User::as_select())
         .limit(100)
-        .load(&mut connection)
-        .expect("Error fetching the users");
+        .load(&mut connection);
 
-    let users: Vec<ResponseUser> = results
-        .iter()
-        .map(|user: &User| ResponseUser {
-            email: user.email.clone(),
-            id: user.id,
-            first_name: user.first_name.clone(),
-            last_name: user.last_name.clone(),
-            username: user.username.clone(),
-        })
-        .collect();
+    match results {
+        Ok(db_users) => {
+            let users: Vec<ResponseUser> = db_users
+                .iter()
+                .map(|user: &User| ResponseUser {
+                    email: user.email.clone(),
+                    id: user.id,
+                    first_name: user.first_name.clone(),
+                    last_name: user.last_name.clone(),
+                    username: user.username.clone(),
+                })
+                .collect();
 
-    HttpResponse::Ok().json(users)
+            HttpResponse::Ok().json(users)
+        }
+        Err(error) => {
+            println!("{}", error);
+            return HttpResponse::InternalServerError().finish();
+        }
+    }
 }

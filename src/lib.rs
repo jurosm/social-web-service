@@ -12,12 +12,14 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub mod auth;
+pub mod common;
 pub mod health;
 pub mod models;
+pub mod open_api_docs;
 pub mod posts;
 pub mod schema;
+pub mod server;
 pub mod users;
-pub mod common;
 
 pub fn config(conf: &mut web::ServiceConfig) {
     crate::users::controller::config(conf);
@@ -47,7 +49,7 @@ pub fn get_connection_pool() -> Pool<ConnectionManager<PgConnection>> {
     Pool::builder()
         .test_on_check_out(true)
         .build(manager)
-        .expect("Could not build connection pool")
+        .expect("Could not build database connection pool")
 }
 
 fn get_claim(token: &String) -> Result<Claims, jsonwebtoken::errors::Error> {
